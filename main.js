@@ -1,8 +1,24 @@
+const fs = require('fs');
 const {app, BrowserWindow, protocol, ipcMain} = require('electron')
 const path = require('path')
 const url = require('url')
-let myPort = 1337;
 const windowName = "main"
+
+let myPort, myAddress
+
+try {
+  const connectionConfig = JSON.parse(fs.readFileSync('config/connection.json', 'utf8'));
+  myPort = connectionConfig.port
+  myAddress = connectionConfig.address
+  console.log("Connection to:", myAddress, myPort) 
+} catch (error) {
+  console.log(error)
+  console.log("Falling back to standart address...") 
+  myPort = 1337
+  myAddress = "127.0.0.1"
+  console.log("Connection to:", myAddress, myPort) 
+}
+
 
 let debug = false;
 let fullscreen = false;
