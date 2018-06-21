@@ -23,30 +23,22 @@ body {
     }
 }
 
-.wrapper, .animated-bg, .blue-bg{
-  position: absolute;
+.wrapper, .animated-bg {
   width: 100vw;
   height: 100vh;
-  background-color: #002965;
   margin: 0;
   padding: 0;
   transition: background-color 1s ease;
   z-index: 2;
 }
 
-.animated-bg  {
-  z-index: 1;
-  background: radial-gradient(#002965 0%,#f06449 53%,#0a1128 70%, #002965 100%);
-  background-size: 1000% 1000%;
-  background-position: 1000% 500%;
-  animation: background-movement 300s linear infinite alternate;
-}
-
 
 .blue-bg {
-  background: transparent;
-  z-index: 3;
-  background-size: 100% 100%
+  z-index: 1;
+  width: 100vw;
+  height: 100vh;
+  position: relative;
+  background-color: #002965;
 }
 
 .start-bg-animation {
@@ -61,6 +53,7 @@ body {
   left: 30px;
   height: 35px;
   width: 400px;
+  z-index: 5;
 }
 
 @keyframes outer-square-rot {
@@ -117,7 +110,11 @@ body {
     color: rgba(255,255,255,0.8);
     transition: color 0.5s ease
   }
-
+.outer {
+  position: absolute;
+  z-index: 5;
+  top: 0;
+}
 .inner {
   padding: 100px 300px;
 }
