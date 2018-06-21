@@ -10,7 +10,7 @@ try {
   const connectionConfig = JSON.parse(fs.readFileSync('config/connection.json', 'utf8'));
   myPort = connectionConfig.port
   myAddress = connectionConfig.address
-  console.log("Connection to:", myAddress, myPort) 
+  console.log("Connection to:", myAddress, myPort)  
 } catch (error) {
   console.log(error)
   console.log("Falling back to standart address...") 

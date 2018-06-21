@@ -1,3 +1,5 @@
+config/connection.json
+
 # Logs
 logs
 *.log
