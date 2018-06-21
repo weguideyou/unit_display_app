@@ -284,7 +284,7 @@ let greetingManager = {
 }
 
 // IPC mit python
-client.connect(myPort, myAddress, function() {
+client.connect({port: myPort, host: myAddress}, function() {
   isConnected = true;
 	console.log('Connected');
 });
