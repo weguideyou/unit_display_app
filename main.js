@@ -289,6 +289,10 @@ client.connect({port: myPort, host: myAddress}, function() {
 	console.log('Connected');
 });
 
+client.on('error', (data) => {
+  console.log(data);
+});
+
 client.on('data', function(data) {
 
   let message = data.toString();
