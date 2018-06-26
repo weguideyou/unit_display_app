@@ -1,5 +1,5 @@
-const {ipcRenderer} = require('electron')
 
+const {ipcRenderer} = require('electron')
 
 
 let greetingInProcess = false
@@ -12,6 +12,7 @@ let extraText = document.createElement("h2");
 parent.appendChild(hello);
 parent.appendChild(extraText);
 
+const FADE_STEPS = 20;
 
 // TESTS
 console.log("Hello world")
@@ -70,7 +71,7 @@ function triggerParticleBubble(x,y) {
   }
 
   dispatchFakeMouseEventForParticleJs("mousemove", x,y)
-  console.log("triggering push at", x, y)
+  // console.log("triggering bubble at", x, y)
 }
 
 function triggerParticleRepulse(x,y) {
@@ -185,82 +186,18 @@ function deleteGreeting() {
   currentPerson == undefined;
 }
 
-// let interpolator = {
-//   interpolate: function (start, stop, count) {
-//     let difference = Math.abs(stop - start)
-//     let positive = (stop - start) > 0
-//     let stepsize = difference / count
-//     let out = []
-
-//     // TODO IMPLEMENT BACKWARDS COUNTING!
-//     for (let i = start; i <= stop; ) {
-//       out.push(i)
-
-//       if (positive) {
-//         i = i + stepsize
-//       } else {
-//         i = i - stepsize
-//       }
-//     }
-
-//     return out
-//   },
-
-//   currentState : {empty: true, last: "", interpolatedPositions: "", next: "", interval: "", interpolationCount: 0},
-
-//   calculatePosition: function(x0, y0, x1, y1) {
-//     let middle_x = (x0 + x1) / 2 
-//     let middle_y = (y0 + y1) / 2
-    
-//     let particleCanvas = getEl("#particles-js > canvas")[0]
-  
-//     let scaled_pos_x = particleCanvas.getAttribute("width") - middle_x / 320 * particleCanvas.getAttribute("width")
-//     let scaled_pos_y = middle_y / 240 * particleCanvas.getAttribute("height")
-
-//     return { x: scaled_pos_x, y: scaled_pos_y}
-//   },
-
-//   updateState: function(x0, y0, x1, y1) {
-//     let correctedPosition = this.calculatePosition(x0, y0, x1, y1)
-//     let particleCanvas = getEl("#particles-js > canvas")[0]
-
-//     if (this.currentState.empty) {
-//       console.log("starting new interpolation session")
-
-//       last = {x: particleCanvas.getAttribute("width") / 2, y: particleCanvas.getAttribute("height") / 2}
-//       console.log("LAST", last)
-//       next = {x: correctedPosition.x, y: correctedPosition.y}
-//       console.log("NEXT", next)
-//       interpolatedPositions = {x: this.interpolate(last.x, next.x, 10), y: this.interpolate(last.y, next.y, 10)}
-
-//       console.log(last, next)
-//       console.log(interpolatedPositions);
-      
-
-
-//     } else {
-//       console.log("updating interpolation session")
-      
-//     }
-//   }
-// }
-
-// setTimeout(() => {
-//   console.log("Testing Interpolation")
-//   console.log(interpolator.interpolate(1,10,9)) 
-
-// }, 5000);
-
 
 ipcRenderer.on("position", (event, arg) => {
   let correctedPosition = correctPosition(arg.x0, arg.y0, arg.x1, arg.y1)
   stepper.updateStepper(correctedPosition.x, correctedPosition.y)
-
-  // triggerParticleBubble(correctedPosition.x, correctedPosition.y)
-
 })
 
 function correctPosition(x0, y0, x1, y1) {
+
+  // The resolution of the video camera is currently 320 * 240 px.
+  // So we first take the middle of the bounding box of the face 
+  // And then scale the values according to screen size
+
   let middle_x = (x0 + x1) / 2 
   let middle_y = (y0 + y1) / 2
   
@@ -274,11 +211,7 @@ function correctPosition(x0, y0, x1, y1) {
 
 
 function updatePosition(x,y) {
-
   triggerParticleBubble(x,y)
-  // let div = getEl("#interpolation")[0]
-  // let positionString = "left: " + x + "px; top: " + y + "px;"
-  // div.setAttribute("style", positionString)
 }
 
 let stepper = {
@@ -287,11 +220,11 @@ let stepper = {
   targetPosition:  {x: 0, y: 0},
   started: false,
 
-  getLengthOfCoordinates: function(x,y) {
+  getLengthOfCoordinates(x,y) {
       return Math.sqrt(x*x + y*y) 
   },
 
-  normalizeCoordinates: function(x,y) {
+  normalizeCoordinates(x,y) {
       return {x: x / stepper.getLengthOfCoordinates(x,y),
               y: y / stepper.getLengthOfCoordinates(x,y)}
   },
@@ -317,15 +250,12 @@ let stepper = {
 
   },
 
-  getStartPosition: function() {
+  getStartPosition() {
       // just taking the middle of the canvas
-
       let particleCanvas = getEl("#particles-js > canvas")[0]
       let top = particleCanvas.getAttribute("height") / 2
       let left = particleCanvas.getAttribute("width") / 2
-      
-
-      
+            
       return {x: left, y: top}
   },
 
@@ -333,9 +263,9 @@ let stepper = {
       if (!stepper.started) {
           console.log("starting stepper")
           
-          // stepper not started, so initialize with standart values and start the rekursion
           stepper.currentPosition = stepper.getStartPosition()
           stepper.targetPosition = {"x": x, "y": y}
+          bubbleFader.bubblesFadeIn()
           stepper.started = true
 
           window.requestAnimationFrame(stepper.steppingStepper)
@@ -348,122 +278,131 @@ let stepper = {
 
 
   steppingStepper() {
-      // check if target is reached and break 
+
+    if (greetingInProcess) {
+
+      // check distance to target, if to small, stay at the same place, other wise interpolate towards the target
       if (Math.abs( stepper.getDistanceFromTarget() ) < stepper.animationStep) {
-          console.log("target is reached, terminating recursion...")
-          stepper.started = false
-          return
+
+        console.log("position is reached but greeting still in progress...")
+        stepper.updateStateAndPosition(stepper.currentPosition.x, stepper.currentPosition.y)
+
+        window.requestAnimationFrame(stepper.steppingStepper)
+        return
+
+      } else {
+        let targetVector = stepper.getTargetVector() // creates vector from stepper.currentPosition to stepper.target Position
+        let deltas = stepper.calculateDeltas(targetVector.x, targetVector.y) // normalizes the vector and multiplies it with stepper.animationStep
+  
+        let newCoordinates = {"x": parseFloat( stepper.currentPosition.x ) + parseFloat( deltas.x ),
+                              "y": parseFloat( stepper.currentPosition.y ) + parseFloat( deltas.y ) }
+  
+        stepper.updateStateAndPosition(newCoordinates.x, newCoordinates.y)
+  
+        window.requestAnimationFrame(stepper.steppingStepper)
       }
+    } else {
+      console.log("greeting is over, terminating recursion...")
 
-      let targetVector = stepper.getTargetVector()
+      stepper.started = false
+      stepper.stopStepping()
+      bubbleFader.bubblesFadeOut()
+      return
+    }
+  },
+  currentStopStep: 0,
 
-      // console.log("CURRENT", stepper.currentPosition)
-      // console.log("TARGET ",stepper.targetPosition)
-      // console.log("TARGETV",targetVector)
-
-      let deltas = stepper.calculateDeltas(targetVector.x, targetVector.y)
-
-      // console.log("DELTAS", deltas)
-
-      let newCoordinates = {"x": parseFloat( stepper.currentPosition.x ) + parseFloat( deltas.x ),
-                            "y": parseFloat( stepper.currentPosition.y ) + parseFloat( deltas.y ) }
-
-      // console.log("NEW POS", newCoordinates)
-
-      stepper.updateStateAndPosition(newCoordinates.x, newCoordinates.y)
-
-      window.requestAnimationFrame(stepper.steppingStepper)
+  stopStepping() {
+    if (!stepper.started) {
+      if (stepper.currentStopStep < FADE_STEPS) {
+  
+        stepper.currentStopStep = stepper.currentStopStep + 1
+        stepper.updateStateAndPosition(stepper.currentPosition.x, stepper.currentPosition.y)
+        window.requestAnimationFrame(stepper.stopStepping)
+  
+      } else {
+        console.log("Finished stop stepping")
+        triggerParticleBubble(9999,9999)
+        stepper.currentStopStep = 0
+      }
+    }
   },
 
   updateStateAndPosition(x,y) {
       stepper.currentPosition = {"x": x, "y": y}
       updatePosition(x,y)
-      // console.log("updated position")
-  }
+  },
 }
 
-
-
-
-// function addNewFacePosition(newPosition) {
-//   facePositions.last = facePositions.current
-//   facePositions.current = newPosition
-//   interpolationCount = 0
-// }
-
-
-
-// let particleCanvas
-// let canvasWidth
-// let canvasHeight
-
-// setTimeout(() => {
-//   particleCanvas = getEl("#particles-js > canvas")[0]
-//   canvasWidth = particleCanvas.getAttribute("width")
-//   canvasHeight = particleCanvas.getAttribute("height")
-// }, 300);
-
-
-// let facePositions = {"last": undefined, "current": undefined}
-// let interpolationCount = 0
-// let interpolationInterval = undefined
-// let killTimeout = undefined
-// let updateRate = 50
-// let interpolationIntervalStarted = false
-
-// function startNewFaceInterval(position) {
-
-//   killTimeout = setTimeout(() => {
-//     clearInterval(interpolationInterval)
-//   }, 1000);
-
-//   interpolationIntervalStarted = true
-//   facePositions.current = position
-//   facePositions.last = {"x": canvasWidth/2, "y": canvasHeight/2}
-
-//   interpolationInterval = setInterval(() => {
-//     let finalX, finalY
-//     if (facePositions.last != undefined && facePositions.current != undefined) {
-//       let distanceX = facePositions["current"]["x"] - facePositions["last"]["x"]
-//       let distanceY = facePositions["current"]["y"] - facePositions["last"]["y"]
-      
-//       finalX = facePositions["last"]["x"] + interpolationCount * distanceX / updateRate
-//       finaly = facePositions["last"]["y"] + interpolationCount * distanceY / updateRate
-      
-//       if (interpolationCount < updateRate) {
-//         console.log("updated interpolation count", interpolationCount)
-//         interpolationCount = interpolationCount + 1
-//       } else {
-//         console.log("clearing interval because no update")
-//         clearInterval(interpolationInterval)
-//         interpolationIntervalStarted = false
-
-//       }
-
-//       triggerParticleBubble(finalX, finalY)
-
-//     }
-
-//   }, 1000/ updateRate)
-// }
-
-
-// function addPositionParticleEffect(position) {
-//   let middle_x = (position.x0 + position.x1) / 2 
-//   let middle_y = (position.y0 + position.y1) / 2
+let bubbleFader = {
+  fadeSteps: FADE_STEPS,
+  currentFadeIn: 0,
+  currentFadeOut: 0,
+  fadeInStarted: false,
+  fadeOutStarted: false,
   
-//   particleCanvas = getEl("#particles-js > canvas")[0]
 
-//   let scaled_pos_x = particleCanvas.getAttribute("width") - middle_x / 320 * particleCanvas.getAttribute("width")
-//   let scaled_pos_y = middle_y / 240 * particleCanvas.getAttribute("height")
+  bubblesFadeIn: function() {
+    let targetSize = window.pJSDom[0].pJS.tmp.obj.mode_bubble_size
+    let currentSize = window.pJSDom[0].pJS.interactivity.modes.bubble.size
 
+    if (!bubbleFader.fadeInStarted) {
+      console.log("starting fadeIn....")
+      bubbleFader.currentFadeIn = 0
+      bubbleFader.fadeInStarted = true
 
-//   if (!interpolationIntervalStarted) {
-//     startNewFaceInterval({"x": scaled_pos_x, "y": scaled_pos_y})
-//   } else {
-//     addNewFacePosition({"x": scaled_pos_x, "y": scaled_pos_y})
-//   }
-// }
+      window.pJSDom[0].pJS.interactivity.modes.bubble.size = 0
+      window.requestAnimationFrame(bubbleFader.bubblesFadeIn)
+    } else {
+      if (bubbleFader.currentFadeIn < bubbleFader.fadeSteps) {
+        
+        bubbleFader.currentFadeIn = bubbleFader.currentFadeIn + 1
+        let newSize = targetSize / bubbleFader.fadeSteps * bubbleFader.currentFadeIn
+        
+        console.log("current size:", currentSize, "target", targetSize, "newSize", newSize)
+        window.pJSDom[0].pJS.interactivity.modes.bubble.size = newSize
+
+        window.requestAnimationFrame(bubbleFader.bubblesFadeIn)
+
+      } else {
+        console.log("fade completed...")
+        bubbleFader.currentFadeIn = 0
+        bubbleFader.fadeInStarted = false
+      }   
+    }
+  },
+
+  bubblesFadeOut: function() {
+    let targetSize = 0
+    let currentSize = window.pJSDom[0].pJS.interactivity.modes.bubble.size
+
+    if (!bubbleFader.fadeOutStarted) {
+      console.log("starting fadeOut....")
+      bubbleFader.currentFadeOut = 0
+      bubbleFader.fadeOutStarted = true
+
+      window.pJSDom[0].pJS.interactivity.modes.bubble.size = currentSize
+      window.requestAnimationFrame(bubbleFader.bubblesFadeOut)
+    } else {
+      if (bubbleFader.currentFadeOut < bubbleFader.fadeSteps) {
+        
+        bubbleFader.currentFadeOut = bubbleFader.currentFadeOut + 1
+        let newSize = currentSize - ( currentSize / bubbleFader.fadeSteps * bubbleFader.currentFadeOut )
+        
+        console.log("current size:", currentSize, "target", targetSize, "newSize", newSize)
+        window.pJSDom[0].pJS.interactivity.modes.bubble.size = newSize
+
+        window.requestAnimationFrame(bubbleFader.bubblesFadeOut)
+
+      } else {
+        console.log("fade completed...")
+        bubbleFader.currentFadeOut = 0
+        bubbleFader.fadeOutStarted = false
+      }
+
+    }
+  }
+}
 
 ipcRenderer.on("new-session", (event, arg) => {
   console.log(arg.name);

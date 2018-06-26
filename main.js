@@ -304,7 +304,13 @@ client.on('data', function(data) {
     {
       let entry = JSON.parse(value) 
       greetingManager.addData(entry.name, entry.area, entry.position);
-      win.webContents.send('position' , entry.position);
+
+      if (greetingManager.activeSession != undefined && greetingManager.activeSession.name != undefined) {
+        if (greetingManager.activeSession.name.toLowerCase() == entry.name.toLowerCase()) {
+          win.webContents.send('position' , entry.position);
+        }
+      }   
+        
     }
   });
 
