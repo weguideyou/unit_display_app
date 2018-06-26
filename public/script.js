@@ -185,79 +185,205 @@ function deleteGreeting() {
   currentPerson == undefined;
 }
 
-let interpolator = {
-  interpolate: function (start, stop, count) {
-    let difference = Math.abs(stop - start)
-    let positive = (stop - start) > 0
-    let stepsize = difference / count
-    let out = []
+// let interpolator = {
+//   interpolate: function (start, stop, count) {
+//     let difference = Math.abs(stop - start)
+//     let positive = (stop - start) > 0
+//     let stepsize = difference / count
+//     let out = []
 
-    // TODO IMPLEMENT BACKWARDS COUNTING!
-    for (let i = start; i <= stop; ) {
-      out.push(i)
+//     // TODO IMPLEMENT BACKWARDS COUNTING!
+//     for (let i = start; i <= stop; ) {
+//       out.push(i)
 
-      if (positive) {
-        i = i + stepsize
-      } else {
-        i = i - stepsize
-      }
-    }
+//       if (positive) {
+//         i = i + stepsize
+//       } else {
+//         i = i - stepsize
+//       }
+//     }
 
-    return out
-  },
+//     return out
+//   },
 
-  currentState : {empty: true, last: "", interpolatedPositions: "", next: "", interval: "", interpolationCount: 0},
+//   currentState : {empty: true, last: "", interpolatedPositions: "", next: "", interval: "", interpolationCount: 0},
 
-  calculatePosition: function(x0, y0, x1, y1) {
-    let middle_x = (x0 + x1) / 2 
-    let middle_y = (y0 + y1) / 2
+//   calculatePosition: function(x0, y0, x1, y1) {
+//     let middle_x = (x0 + x1) / 2 
+//     let middle_y = (y0 + y1) / 2
     
-    let particleCanvas = getEl("#particles-js > canvas")[0]
+//     let particleCanvas = getEl("#particles-js > canvas")[0]
   
-    let scaled_pos_x = particleCanvas.getAttribute("width") - middle_x / 320 * particleCanvas.getAttribute("width")
-    let scaled_pos_y = middle_y / 240 * particleCanvas.getAttribute("height")
+//     let scaled_pos_x = particleCanvas.getAttribute("width") - middle_x / 320 * particleCanvas.getAttribute("width")
+//     let scaled_pos_y = middle_y / 240 * particleCanvas.getAttribute("height")
 
-    return { x: scaled_pos_x, y: scaled_pos_y}
-  },
+//     return { x: scaled_pos_x, y: scaled_pos_y}
+//   },
 
-  updateState: function(x0, y0, x1, y1) {
-    let correctedPosition = this.calculatePosition(x0, y0, x1, y1)
-    let particleCanvas = getEl("#particles-js > canvas")[0]
+//   updateState: function(x0, y0, x1, y1) {
+//     let correctedPosition = this.calculatePosition(x0, y0, x1, y1)
+//     let particleCanvas = getEl("#particles-js > canvas")[0]
 
-    if (this.currentState.empty) {
-      console.log("starting new interpolation session")
+//     if (this.currentState.empty) {
+//       console.log("starting new interpolation session")
 
-      last = {x: particleCanvas.getAttribute("width") / 2, y: particleCanvas.getAttribute("height") / 2}
-      console.log("LAST", last)
-      next = {x: correctedPosition.x, y: correctedPosition.y}
-      console.log("NEXT", next)
-      interpolatedPositions = {x: this.interpolate(last.x, next.x, 10), y: this.interpolate(last.y, next.y, 10)}
+//       last = {x: particleCanvas.getAttribute("width") / 2, y: particleCanvas.getAttribute("height") / 2}
+//       console.log("LAST", last)
+//       next = {x: correctedPosition.x, y: correctedPosition.y}
+//       console.log("NEXT", next)
+//       interpolatedPositions = {x: this.interpolate(last.x, next.x, 10), y: this.interpolate(last.y, next.y, 10)}
 
-      console.log(last, next)
-      console.log(interpolatedPositions);
+//       console.log(last, next)
+//       console.log(interpolatedPositions);
       
 
 
-    } else {
-      console.log("updating interpolation session")
+//     } else {
+//       console.log("updating interpolation session")
       
-    }
-  }
-}
+//     }
+//   }
+// }
 
-setTimeout(() => {
-  console.log("Testing Interpolation")
-  console.log(interpolator.interpolate(1,10,9)) 
+// setTimeout(() => {
+//   console.log("Testing Interpolation")
+//   console.log(interpolator.interpolate(1,10,9)) 
 
-}, 5000);
+// }, 5000);
 
 
 ipcRenderer.on("position", (event, arg) => {
-  let correctedPosition = interpolator.calculatePosition(arg.x0, arg.y0, arg.x1, arg.y1)
-  triggerParticleBubble(correctedPosition.x, correctedPosition.y)
+  let correctedPosition = correctPosition(arg.x0, arg.y0, arg.x1, arg.y1)
+  stepper.updateStepper(correctedPosition.x, correctedPosition.y)
 
-  interpolator.updateState(arg.x0, arg.y0, arg.x1, arg.y1)
+  // triggerParticleBubble(correctedPosition.x, correctedPosition.y)
+
 })
+
+function correctPosition(x0, y0, x1, y1) {
+  let middle_x = (x0 + x1) / 2 
+  let middle_y = (y0 + y1) / 2
+  
+  let particleCanvas = getEl("#particles-js > canvas")[0]
+
+  let scaled_pos_x = particleCanvas.getAttribute("width") - middle_x / 320 * particleCanvas.getAttribute("width")
+  let scaled_pos_y = middle_y / 240 * particleCanvas.getAttribute("height")
+
+  return { x: scaled_pos_x, y: scaled_pos_y}
+}
+
+
+function updatePosition(x,y) {
+
+  triggerParticleBubble(x,y)
+  // let div = getEl("#interpolation")[0]
+  // let positionString = "left: " + x + "px; top: " + y + "px;"
+  // div.setAttribute("style", positionString)
+}
+
+let stepper = {
+  animationStep: 5,
+  currentPosition: {x: 0, y: 0},
+  targetPosition:  {x: 0, y: 0},
+  started: false,
+
+  getLengthOfCoordinates: function(x,y) {
+      return Math.sqrt(x*x + y*y) 
+  },
+
+  normalizeCoordinates: function(x,y) {
+      return {x: x / stepper.getLengthOfCoordinates(x,y),
+              y: y / stepper.getLengthOfCoordinates(x,y)}
+  },
+
+  getDistanceFromTarget() {
+      let targetVector = stepper.getTargetVector()
+      
+      return stepper.getLengthOfCoordinates(targetVector.x, targetVector.y)
+  },
+
+  getTargetVector() {
+      let delta_x  = stepper.targetPosition.x - stepper.currentPosition.x
+      let delta_y  = stepper.targetPosition.y - stepper.currentPosition.y
+
+      return {"x": delta_x, "y": delta_y}
+  },
+
+  calculateDeltas(x,y) {
+      let normalizedVector = stepper.normalizeCoordinates(x, y)
+
+      return {"x": normalizedVector.x * stepper.animationStep, 
+              "y": normalizedVector.y * stepper.animationStep}
+
+  },
+
+  getStartPosition: function() {
+      // just taking the middle of the canvas
+
+      let particleCanvas = getEl("#particles-js > canvas")[0]
+      let top = particleCanvas.getAttribute("height") / 2
+      let left = particleCanvas.getAttribute("width") / 2
+      
+
+      
+      return {x: left, y: top}
+  },
+
+  updateStepper(x,y) {
+      if (!stepper.started) {
+          console.log("starting stepper")
+          
+          // stepper not started, so initialize with standart values and start the rekursion
+          stepper.currentPosition = stepper.getStartPosition()
+          stepper.targetPosition = {"x": x, "y": y}
+          stepper.started = true
+
+          window.requestAnimationFrame(stepper.steppingStepper)
+
+      } else {
+          console.log("updating stepper")
+          stepper.targetPosition = {"x": x, "y": y}
+      }
+  },
+
+
+  steppingStepper() {
+      // check if target is reached and break 
+      if (Math.abs( stepper.getDistanceFromTarget() ) < stepper.animationStep) {
+          console.log("target is reached, terminating recursion...")
+          stepper.started = false
+          return
+      }
+
+      let targetVector = stepper.getTargetVector()
+
+      // console.log("CURRENT", stepper.currentPosition)
+      // console.log("TARGET ",stepper.targetPosition)
+      // console.log("TARGETV",targetVector)
+
+      let deltas = stepper.calculateDeltas(targetVector.x, targetVector.y)
+
+      // console.log("DELTAS", deltas)
+
+      let newCoordinates = {"x": parseFloat( stepper.currentPosition.x ) + parseFloat( deltas.x ),
+                            "y": parseFloat( stepper.currentPosition.y ) + parseFloat( deltas.y ) }
+
+      // console.log("NEW POS", newCoordinates)
+
+      stepper.updateStateAndPosition(newCoordinates.x, newCoordinates.y)
+
+      window.requestAnimationFrame(stepper.steppingStepper)
+  },
+
+  updateStateAndPosition(x,y) {
+      stepper.currentPosition = {"x": x, "y": y}
+      updatePosition(x,y)
+      // console.log("updated position")
+  }
+}
+
+
+
 
 // function addNewFacePosition(newPosition) {
 //   facePositions.last = facePositions.current
