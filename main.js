@@ -7,7 +7,7 @@ const windowName = "main"
 let myPort, myAddress
 
 try {
-  throw new Error("Dude delete this line if you are working with the nuc...")
+  throw new Error("Dude delete this line if you are working at home")
   const connectionConfig = JSON.parse(fs.readFileSync('config/connection.json', 'utf8'));
   myPort = connectionConfig.port
   myAddress = connectionConfig.address
@@ -57,7 +57,7 @@ let client = new net.Socket();
 let win
 
 function createWindow () {
-  win = new BrowserWindow({width: 1800, height: 1012, title: "Advanced AI stuff or not..."})
+  win = new BrowserWindow({width: 1280, height: 720, title: "WeGuideYou"})
 
   win.loadURL(url.format({
     pathname: path.join(__dirname, 'index.html'),
@@ -75,7 +75,6 @@ function createWindow () {
   {
     win.setFullScreen(true)
   }
-
 
   win.on('closed', () => {
     win = null

@@ -206,12 +206,59 @@ function correctPosition(x0, y0, x1, y1) {
   let scaled_pos_x = particleCanvas.getAttribute("width") - middle_x / 320 * particleCanvas.getAttribute("width")
   let scaled_pos_y = middle_y / 240 * particleCanvas.getAttribute("height")
 
+  console.log(middle_x, scaled_pos_x)
+  console.log(middle_y, scaled_pos_y)
+  console.log(particleCanvas.getAttribute("width"))
+  console.log(particleCanvas.getAttribute("height"))
+
   return { x: scaled_pos_x, y: scaled_pos_y}
 }
 
 
-function updatePosition(x,y) {
-  triggerParticleBubble(x,y)
+let movingParticleEffects = {
+  effectFrameCounter: 0,
+  effectFrameCounterSamePosition: 0,
+  usageFrames: 5,
+  countParticlesPerPush: 2,
+  
+  triggerEffects(x,y) {
+    triggerParticleBubble(x,y)
+    this.effectFrameCounter = this.effectFrameCounter > 1000 ? 1 : this.effectFrameCounter + 1
+    if (this.effectFrameCounter % this.usageFrames == 0) {
+      this.pushAndDeleteParticles(x,y)
+    }
+  },
+
+  lastPosition: {"x": 0, "y": 0},
+  
+  pushAndDeleteParticles(x,y) {
+    let distanceToLastPosition = this.getDistanceBetweenPositions(x,y, this.lastPosition.x, this.lastPosition.y) 
+    
+    if (distanceToLastPosition > 30) {
+      this.lastPosition.x = x
+      this.lastPosition.y = y
+      triggerParticlePush(this.countParticlesPerPush,x,y)
+      window.pJSDom[0].pJS.fn.modes.removeParticles(this.countParticlesPerPush)
+
+    } else {
+      this.effectFrameCounterSamePosition = this.effectFrameCounterSamePosition > 1000 ? 1 : this.effectFrameCounterSamePosition + 1
+      
+      if (this.effectFrameCounterSamePosition % (this.usageFrames) == 0) {
+        triggerParticlePush(this.countParticlesPerPush,x,y)
+        window.pJSDom[0].pJS.fn.modes.removeParticles(this.countParticlesPerPush)
+      }
+
+    }
+    
+  },
+
+  getDistanceBetweenPositions(x0,y0, x1, y1) {
+    let deltaX = x0 - x1
+    let deltaY = y0 - y1
+
+    return Math.sqrt(deltaX * deltaX + deltaY * deltaY)
+  }
+
 }
 
 let stepper = {
@@ -284,7 +331,6 @@ let stepper = {
       // check distance to target, if to small, stay at the same place, other wise interpolate towards the target
       if (Math.abs( stepper.getDistanceFromTarget() ) < stepper.animationStep) {
 
-        console.log("position is reached but greeting still in progress...")
         stepper.updateStateAndPosition(stepper.currentPosition.x, stepper.currentPosition.y)
 
         window.requestAnimationFrame(stepper.steppingStepper)
@@ -330,7 +376,7 @@ let stepper = {
 
   updateStateAndPosition(x,y) {
       stepper.currentPosition = {"x": x, "y": y}
-      updatePosition(x,y)
+      movingParticleEffects.triggerEffects(x,y)
   },
 }
 
