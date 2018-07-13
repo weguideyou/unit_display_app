@@ -7,7 +7,7 @@ const windowName = "main"
 let myPort, myAddress
 
 try {
-  throw new Error("Dude delete this line if you are working at home")
+  // throw new Error("Dude delete this line if you are working at home")
   const connectionConfig = JSON.parse(fs.readFileSync('config/connection.json', 'utf8'));
   myPort = connectionConfig.port
   myAddress = connectionConfig.address
