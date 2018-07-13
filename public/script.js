@@ -220,6 +220,7 @@ let movingParticleEffects = {
   effectFrameCounterSamePosition: 0,
   usageFrames: 5,
   countParticlesPerPush: 2,
+  distanceThresholdToLastPosition: 20,
   
   triggerEffects(x,y) {
     triggerParticleBubble(x,y)
@@ -234,7 +235,7 @@ let movingParticleEffects = {
   pushAndDeleteParticles(x,y) {
     let distanceToLastPosition = this.getDistanceBetweenPositions(x,y, this.lastPosition.x, this.lastPosition.y) 
     
-    if (distanceToLastPosition > 30) {
+    if (distanceToLastPosition > this.distanceThresholdToLastPosition) {
       this.lastPosition.x = x
       this.lastPosition.y = y
       triggerParticlePush(this.countParticlesPerPush,x,y)
@@ -243,9 +244,11 @@ let movingParticleEffects = {
     } else {
       this.effectFrameCounterSamePosition = this.effectFrameCounterSamePosition > 1000 ? 1 : this.effectFrameCounterSamePosition + 1
       
-      if (this.effectFrameCounterSamePosition % (this.usageFrames) == 0) {
+      if (this.effectFrameCounterSamePosition % (this.usageFrames * 3) == 0) {
         triggerParticlePush(this.countParticlesPerPush,x,y)
-        window.pJSDom[0].pJS.fn.modes.removeParticles(this.countParticlesPerPush)
+        for (let i = 0; i < this.countParticlesPerPush; i++) {
+          window.pJSDom[0].pJS.fn.modes.removeParticles(1)
+        }
       }
 
     }
