@@ -4,6 +4,7 @@ const path = require('path')
 const url = require('url')
 const windowName = "main"
 
+const USE_IPC_WITH_PYTHON = false
 let myPort, myAddress
 
 try {
@@ -166,7 +167,6 @@ let greetingManager = {
 
     this.sessions.delete(name);
     win.webContents.send('stop-session' , {"name": name});
-    // this.checkIfThereAreMoreFaces();
 
   },
 
@@ -255,86 +255,82 @@ let greetingManager = {
 
       }, 500);
 
-
-      // creates weird in between state
-      // setTimeout(function () {
-      //   console.log(9);
-      //   win.webContents.send('stop-session' , {"name": "test1"});
-      //   win.webContents.send('new-session' , {"name": "test2" });
-      //   win.webContents.send('stop-session' , {"name": "test2"});
-      //   win.webContents.send('stop-session' , {"name": "test3"});
-      //   win.webContents.send('stop-session' , {"name": "test4"});
-      //   win.webContents.send('new-session' , {"name": "test2" });
-      //   win.webContents.send('new-session' , {"name": "test1" });
-      // }, 400);
-      // setTimeout(function () {
-      //   console.log(10);
-      //   win.webContents.send('stop-session' , {"name": "test1"});
-      //   win.webContents.send('stop-session' , {"name": "test3"});
-      //   win.webContents.send('stop-session' , {"name": "test2"});
-      //   win.webContents.send('new-session' , {"name": "test2" });
-      //   win.webContents.send('new-session' , {"name": "test2" });
-      //   win.webContents.send('stop-session' , {"name": "test4"});
-      //   win.webContents.send('new-session' , {"name": "test1" });
-      // }, 490);
     }
   }
 }
 
 
 // für ipc mit python
-let net = require('net');
-let client = new net.Socket();
 
-// IPC mit python
-client.connect({port: myPort, host: myAddress}, function() {
-  isConnected = true;
-	console.log('Connected');
-});
-
-client.on('error', (data) => {
-  console.log(data);
-});
-
-client.on('data', function(data) {
-
-  let message = data.toString();
-  let splittedMessage = message.split(";");
-
-  splittedMessage.forEach( value => {
-    if (value != "")
-    {
-      let entry = JSON.parse(value) 
-      greetingManager.addData(entry.name, entry.area, entry.position);
-
-      if (greetingManager.activeSession != undefined && greetingManager.activeSession.name != undefined) {
-        if (greetingManager.activeSession.name.toLowerCase() == entry.name.toLowerCase()) {
-          win.webContents.send('position' , entry.position);
-        }
-      }   
-        
-    }
+if (USE_IPC_WITH_PYTHON) {
+  let net = require('net');
+  let client = new net.Socket();
+  
+  // IPC mit python
+  client.connect({port: myPort, host: myAddress}, function() {
+    isConnected = true;
+    console.log('Connected');
   });
+  
+  client.on('error', (data) => {
+    console.log(data);
+  });
+  
+  client.on('data', function(data) {
+  
+    let message = data.toString();
+    let splittedMessage = message.split(";");
+  
+    splittedMessage.forEach( value => {
+      if (value != "")
+      {
+        let entry = JSON.parse(value) 
+        greetingManager.addData(entry.name, entry.area, entry.position);
+  
+        if (greetingManager.activeSession != undefined && greetingManager.activeSession.name != undefined) {
+          if (greetingManager.activeSession.name.toLowerCase() == entry.name.toLowerCase()) {
+            win.webContents.send('position' , entry.position);
+          }
+        }   
+          
+      }
+    });
+  
+  });
+  
+  client.on('error', function(error) {
+    if(error.code == "ECONNREFUSED")
+    {
+      console.log("connection refused - pyserver not started?");
+    }
+    else
+    {
+      console.log(error);
+    }
+    isConnected = false;
+    client.destroy();
+  });
+  
+  client.on('close', function() {
+    isConnected = false;
+    console.log('Connection closed');
+  });
+} else {
+  // this will be the standart connection and standart way of working -> no more session keeping on the electron app instead session keeping on internal handler 
+  let io = require('socket.io-client')
 
-});
+  const address =  "http://" + myAddress + ":" + myPort
+  console.log("connecting to: ", address)
+  let connection =  io.connect(address)
 
-client.on('error', function(error) {
-  if(error.code == "ECONNREFUSED")
-  {
-    console.log("connection refused - pyserver not started?");
-  }
-  else
-  {
-    console.log(error);
-  }
-  isConnected = false;
-  client.destroy();
-});
+  connection.on('connect', function (socket) {
+    console.log("display received connection")
 
-client.on('close', function() {
-  isConnected = false;
-	console.log('Connection closed');
-});
+    connection.on("msg", msg => {
+        console.log("got message", msg)
+      })
+  })
+}
 
 // teste die verbindung zum browser window
 ipcMain.on('asynchronous-message', (event, arg) => {
