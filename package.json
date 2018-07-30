@@ -11,6 +11,7 @@
     "electron": "^1.8.7"
   },
   "dependencies": {
-    "snapsvg": "^0.5.1"
+    "snapsvg": "^0.5.1",
+    "socket.io-client": "^2.1.1"
   }
 }

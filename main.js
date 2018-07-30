@@ -50,9 +50,7 @@ arguments.forEach(function(value,index, array) {
   }
 });
 
-// für ipc mit python
-let net = require('net');
-let client = new net.Socket();
+
 
 let win
 
@@ -282,6 +280,11 @@ let greetingManager = {
     }
   }
 }
+
+
+// für ipc mit python
+let net = require('net');
+let client = new net.Socket();
 
 // IPC mit python
 client.connect({port: myPort, host: myAddress}, function() {
