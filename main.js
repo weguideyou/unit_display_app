@@ -94,248 +94,40 @@ app.on('activate', () => {
   }
 })
 
+let io = require('socket.io-client')
 
-let greetingManager = {
-  sessions: new Map(),
-  activeSession: undefined,
-  interval: undefined,
+const address =  "http://" + myAddress + ":" + myPort
+console.log("connecting to: ", address)
+let connection =  io.connect(address)
 
-  addData: function(name, area, position)
-  {
-    console.log(name, area);
+connection.on('connect', function (socket) {
+  console.log("display received connection")
 
-    if (browserAlive && this.sessions.size == 0)
-    {
-        this.sessions.set(name, this.createNewEntry(name, area, position));
-        console.log("cleared interval, found new dude");
-        clearInterval(this.interval);
-        this.startInterval();
-    }
-    if (!this.sessions.has(name))
-    {
-        this.sessions.set(name, this.createNewEntry(name, area, position));
-        console.log("creating new entry for " + name);
-    }
-    else
-    {
+  connection.on("msg", msg => {
+      console.log("got message", msg)
+    })
 
-      // console.log("updating existing entry");
-      let existingEntry = this.sessions.get(name);
-
-      clearTimeout(existingEntry.timeout);
-
-      existingEntry.timeout = setTimeout(function() {
-        greetingManager.deleteEntry(name)
-      }, 1500);
-
-      existingEntry.area = area;
-      existingEntry.position = position;
-
-    }
-  },
-
-  createNewEntry: function(name,area,position)
-  {
-    return {
-      "name": name,
-      "timeout": setTimeout(function() {
-        greetingManager.deleteEntry(name)
-      }, 1000),
-      "area": area,
-      "position": position
-    }
-  },
-
-  deleteEntry: function(name)
-  {
-    console.log("deleting entry " + name);
-    console.log("");
-    let sessionName = this.sessions.get(name).name;
-    let activeName;
-    if (this.activeSession != undefined && this.activeSession.hasOwnProperty("name"))
-    {
-      activeName = this.activeSession.name
-    }
-    else {
-      activeName = undefined;
-      console.log("+++++++++++++++++++++++++++++++++++++++++++ already deleted");
-    }
-    if (activeName != undefined && sessionName == activeName)
-    {
-      this.activeSession = undefined;
-    }
-
-    this.sessions.delete(name);
-    win.webContents.send('stop-session' , {"name": name});
-
-  },
-
-  getSessionWithBiggestArea: function()
-  {
-    let keys = Array.from( this.sessions.keys() );
-    let biggest;
-
-    keys.forEach( key => {
-      if (biggest == null)
-      {
-        biggest = this.sessions.get(key);
-      }
-      else
-      {
-        if (this.sessions.get(key).area >= biggest.area)
-          biggest = this.sessions.get(key);
-      }
-    });
-    return biggest;
-  },
-
-  sendNewSession: function()
-  {
-    let biggestSession = this.getSessionWithBiggestArea();
-    if (biggestSession != null)
-    {
-      if (this.activeSession == null || this.activeSession.name != biggestSession.name)
-      {
-        this.activeSession = biggestSession;
-        console.log("biggest session " + this.activeSession.name + " " + this.activeSession.area);
-        console.log("sending new session");
-        win.webContents.send('new-session' , {"name": this.activeSession.name });
-      }
-    }
-    else
-    {
-      console.log("No session found");
-    }
-  },
-
-  checkIfThereAreMoreFaces: function()
-  {
-    if(this.sessions.size > 0)
-    {
-      this.sendNewSession();
-    }
-  },
-
-  startInterval: function()
-  {
-    if (isConnected)
-    {
-      console.log("starting up, sending new session");
-      this.sendNewSession();
-
-      interval = setInterval( () => {
-        console.log("interval");
-        if (this.sessions.size > 0)
-        {
-          greetingManager.sendNewSession();
-        }
-      }, 3000)
-    }
-    else
-    {
-      console.log("no conncection to backend, not starting interval");
-      console.log("frontend runs in dummy mode");
-
-      setTimeout(function () {
-        console.log(1);
-        win.webContents.send('stop-session' , {"name": "test2"});
-      },200);
-      setTimeout(function () {
-        console.log(2);
-        win.webContents.send('new-session' , {"name": "test1" });
-      }, 300);
-      setTimeout(function () {
-        console.log(3);
-        win.webContents.send('stop-session' , {"name": "test1"});
-
-      }, 400);
-      setTimeout(function () {
-        console.log(4);
-        win.webContents.send('new-session' , {"name": "test2" });
-
-      }, 500);
-
-    }
-  }
-}
-
-
-// für ipc mit python
-
-if (USE_IPC_WITH_PYTHON) {
-  let net = require('net');
-  let client = new net.Socket();
-  
-  // IPC mit python
-  client.connect({port: myPort, host: myAddress}, function() {
-    isConnected = true;
-    console.log('Connected');
-  });
-  
-  client.on('error', (data) => {
-    console.log(data);
-  });
-  
-  client.on('data', function(data) {
-  
-    let message = data.toString();
-    let splittedMessage = message.split(";");
-  
-    splittedMessage.forEach( value => {
-      if (value != "")
-      {
-        let entry = JSON.parse(value) 
-        greetingManager.addData(entry.name, entry.area, entry.position);
-  
-        if (greetingManager.activeSession != undefined && greetingManager.activeSession.name != undefined) {
-          if (greetingManager.activeSession.name.toLowerCase() == entry.name.toLowerCase()) {
-            win.webContents.send('position' , entry.position);
-          }
-        }   
-          
-      }
-    });
-  
-  });
-  
-  client.on('error', function(error) {
-    if(error.code == "ECONNREFUSED")
-    {
-      console.log("connection refused - pyserver not started?");
-    }
-    else
-    {
-      console.log(error);
-    }
-    isConnected = false;
-    client.destroy();
-  });
-  
-  client.on('close', function() {
-    isConnected = false;
-    console.log('Connection closed');
-  });
-} else {
-  // this will be the standart connection and standart way of working -> no more session keeping on the electron app instead session keeping on internal handler 
-  let io = require('socket.io-client')
-
-  const address =  "http://" + myAddress + ":" + myPort
-  console.log("connecting to: ", address)
-  let connection =  io.connect(address)
-
-  connection.on('connect', function (socket) {
-    console.log("display received connection")
-
-    connection.on("msg", msg => {
-        console.log("got message", msg)
-      })
+  connection.on("newSession", (msg) => {
+    console.log("newSession", msg)
+    win.webContents.send('new-session' , {"face_id": msg.face_id, "message": msg.message });
   })
-}
+
+
+  connection.on("stopSession", (msg) => {
+    console.log("stopSession", msg)
+    win.webContents.send('stop-session' , {"face_id": msg.face_id});
+  })
+
+
+  connection.on("updatePosition", (msg) => {
+    console.log("updatePosition", msg)
+    win.webContents.send('position' , msg.position);
+  })
+})
+
 
 // teste die verbindung zum browser window
 ipcMain.on('asynchronous-message', (event, arg) => {
   console.log(arg) // prints "ping"
   event.sender.send('asynchronous-reply', 'hello from electron')
-  browserAlive = true;
-  greetingManager.startInterval();
 })
