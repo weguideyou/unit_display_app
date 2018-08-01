@@ -119,38 +119,31 @@ function getGreetingText()
   return "Your upcoming meeting is in " + roomNumber + ", " + directions;
 }
 
-function startNewGreeting(name)
-{
-  if (greetingInProcess)
-  {
-    console.log("already greeting someone else....")
-  }
-  else
-  {
-    greetingInProcess = true;
-    currentPerson = name;
-    clearTimeout(deletionTimeout);
+function startNewGreeting(message) {
+  greetingInProcess = true;
+  currentPerson = message.face_id;
+  clearTimeout(deletionTimeout);
 
-    getEl(".outer-square")[0].classList.remove("rotate")
-    getEl(".inner-square")[0].classList.add("whiter")
-    getEl("#text")[0].classList.add("invisible");
+  getEl(".outer-square")[0].classList.remove("rotate")
+  getEl(".inner-square")[0].classList.add("whiter")
+  getEl("#text")[0].classList.add("invisible");
 
-    hello.textContent = "Hello " + name.charAt(0).toUpperCase() + name.slice(1) + "!";
-    hello.setAttribute("id", "headline")
-    setTimeout(function () {
-      hello.classList.add("make-visible")
-    }, 0);
+  hello.textContent = message.heading
+  hello.setAttribute("id", "headline")
+  setTimeout(function () {
+  hello.classList.add("make-visible")
+  }, 0);
 
-    setTimeout(function() {
-      extraText.textContent = getGreetingText();
-      extraText.setAttribute("id", "extratext");
-      setTimeout(function () {
-        extraText.classList.add("make-visible")
-      }, 0);
-    }, 500)
+  setTimeout(function() {
+  extraText.textContent = message.text
+  extraText.setAttribute("id", "extratext");
+  setTimeout(function () {
+    extraText.classList.add("make-visible")
+  }, 0);
+  }, 500)
 
-    getEl(".wrapper")[0].classList.add("start-bg-animation");
-  }
+  getEl(".wrapper")[0].classList.add("start-bg-animation");
+  
 }
 
 function deleteGreeting() {
@@ -188,8 +181,10 @@ function deleteGreeting() {
 
 
 ipcRenderer.on("position", (event, arg) => {
-  let correctedPosition = correctPosition(arg.x0, arg.y0, arg.x1, arg.y1)
-  stepper.updateStepper(correctedPosition.x, correctedPosition.y)
+  if (greetingInProcess) {
+    let correctedPosition = correctPosition(arg.x0, arg.y0, arg.x1, arg.y1)
+    stepper.updateStepper(correctedPosition.x, correctedPosition.y)
+  }
 })
 
 function correctPosition(x0, y0, x1, y1) {
@@ -453,8 +448,13 @@ let bubbleFader = {
   }
 }
 
+
+
+
+
+
 ipcRenderer.on("new-session", (event, arg) => {
-  console.log(arg.name);
+
   console.log(arg)
 
   if (greetingInProcess)
@@ -462,19 +462,19 @@ ipcRenderer.on("new-session", (event, arg) => {
     console.log("another greeting in process");
     deleteGreeting()
     setTimeout(function () {
-      startNewGreeting(arg.name);
+      startNewGreeting(arg);
     }, 500);
   }
   else
   {
-    startNewGreeting(arg.name);
+    startNewGreeting(arg);
   }
 });
 
 ipcRenderer.on("stop-session", (event, arg) => {
-  if (arg != null && arg.hasOwnProperty("name"))
+  if (arg != null && arg.hasOwnProperty("face_id"))
   {
-    if (arg.name == currentPerson)
+    if (arg.face_id == currentPerson)
     {
       console.log("Stopping session " + arg.name);
       deleteGreeting();

@@ -109,13 +109,13 @@ connection.on('connect', function (socket) {
 
   connection.on("newSession", (msg) => {
     console.log("newSession", msg)
-    win.webContents.send('new-session' , {"face_id": msg.face_id, "message": msg.message });
+    win.webContents.send('new-session' , msg);
   })
 
 
   connection.on("stopSession", (msg) => {
     console.log("stopSession", msg)
-    win.webContents.send('stop-session' , {"face_id": msg.face_id});
+    win.webContents.send('stop-session' , {"face_id": msg});
   })
 
 
