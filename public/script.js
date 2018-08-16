@@ -119,7 +119,19 @@ function getGreetingText()
   return "Your upcoming meeting is in " + roomNumber + ", " + directions;
 }
 
-function startNewGreeting(message) {
+function startNewGreeting(message) {  // let personIsActive = false
+  // active_persons.forEach(person => {
+  //   if (person.face_id == name ) {
+  //     personIsActive = true
+  //   }
+  // })
+
+
+  // if(!personIsActive)  {
+  //   log
+  //   return
+  // }
+ 
   greetingInProcess = true;
   currentPerson = message.face_id;
   clearTimeout(deletionTimeout);
